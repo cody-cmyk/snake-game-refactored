@@ -38,7 +38,7 @@ class AnimationManager:
         if self.screen is None:
             return
 
-        for color in settings.ANIMATION_LEVEL_COLORS * 2:
+        for _ in settings.ANIMATION_LEVEL_COLORS * 2:
             self.screen.update()
             time.sleep(0.15)
 
