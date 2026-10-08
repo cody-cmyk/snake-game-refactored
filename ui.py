@@ -44,9 +44,9 @@ class GameUI:
 
         self.help_writer.goto(0, -335)
         self.help_writer.write(
-            "Move: Arrow Keys / WASD    |    Pause: P    |    Restart: R    |    Admin: A+C",
+            "Move: Arrow Keys / WASD    |    Pause: P    |    Restart: R    |    Menu: M",
             align="center",
-            font=("Arial", 12, "normal")
+            font=("Arial", 10, "normal")
         )
 
     def show_message(self, message, color="#FFFFFF"):
@@ -73,7 +73,7 @@ class GameUI:
                 f"Time: {max(0, int(game_state['time_remaining']))}s    "
                 f"Difficulty: {game_state['difficulty'].upper()}",
                 align="center",
-                font=("Arial", 18, "bold")
+                font=("Arial", 14, "bold")
             )
         else:
             self.score_writer.write(
@@ -83,7 +83,7 @@ class GameUI:
                 f"Mode: {game_state['game_mode'].upper() if game_state['game_mode'] else 'CLASSIC'}    "
                 f"Difficulty: {game_state['difficulty'].upper() if game_state['difficulty'] else 'NORMAL'}",
                 align="center",
-                font=("Arial", 18, "bold")
+                font=("Arial", 12, "bold")
             )
 
         if game_state.get("admin_mode"):
@@ -92,7 +92,7 @@ class GameUI:
             self.admin_indicator.write(
                 f"[ADMIN] Points: {game_state['admin_points_per_food']} | Speed: {game_state['admin_speed_multiplier']}x | Anim: {game_state['admin_animation_level']}",
                 align="left",
-                font=("Arial", 12, "bold")
+                font=("Arial", 10, "bold")
             )
         else:
             self.admin_indicator.clear()

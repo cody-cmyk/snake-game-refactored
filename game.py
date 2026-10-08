@@ -5,7 +5,7 @@ import settings
 from admin import AdminController
 from animations import AnimationManager
 from controls import ControlBinder
-from entities import Snake, Food, BonusFood
+from entities import Snake, Food, BonusFood, PoisonFood
 from ui import GameUI
 
 
@@ -30,6 +30,7 @@ class SnakeGame:
         self.snake = Snake()
         self.food = Food()
         self.bonus_food = BonusFood()
+        self.poison_food = PoisonFood()
 
         self.direction = "stop"
         self.next_direction = "stop"
@@ -38,6 +39,7 @@ class SnakeGame:
         self.high_score = 0
         self.level = 1
         self.speed = settings.STARTING_SPEED
+        self.combo = 0
 
         self.running = False
         self.paused = False
@@ -45,15 +47,19 @@ class SnakeGame:
 
         self.bonus_active = False
         self.bonus_deadline = 0
+        self.poison_active = False
+        self.poison_deadline = 0
 
         self.game_mode = None
         self.difficulty = None
         self.time_limit = 0
         self.time_remaining = 0
         self.start_time = 0
+        self.foods_eaten = 0
 
         self.create_food()
         self.create_bonus_food()
+        self.create_poison_food()
         self.bind_controls()
         self.show_main_menu()
 
@@ -66,6 +72,9 @@ class SnakeGame:
 
     def create_bonus_food(self):
         self.bonus_food = BonusFood()
+
+    def create_poison_food(self):
+        self.poison_food = PoisonFood()
 
     # ---------------------------------------------------------
     # UI methods
@@ -94,23 +103,31 @@ class SnakeGame:
 
     def show_main_menu(self):
         self.show_message(
-            "SNAKE GAME\n"
-            "1: PLAY\n"
-            "2: ADMIN PANEL\n"
-            "3: QUIT",
+            "ARCADE GAMES\n\n"
+            "1: SNAKE GAME\n"
+            "2: TETRIS\n"
+            "3: SETTINGS\n"
+            "4: QUIT",
             "#00FFFF"
         )
 
         self.screen.listen()
         self.screen.onkeypress(self.show_mode_menu, "1")
-        self.screen.onkeypress(self.show_admin_panel, "2")
-        self.screen.onkeypress(self.quit_game, "3")
+        self.screen.onkeypress(self.launch_tetris, "2")
+        self.screen.onkeypress(self.show_admin_panel, "3")
+        self.screen.onkeypress(self.quit_game, "4")
         self.screen.update()
+
+    def launch_tetris(self):
+        self.clear_message()
+        from tetris import TetrisGame
+        tetris = TetrisGame()
+        self.show_main_menu()
 
     def show_admin_panel(self):
         self.admin_controller.admin_mode = True
         self.show_message(
-            "ADMIN PANEL\n\n"
+            "SETTINGS\n\n"
             "1: ADJUST POINTS (currently " + str(self.admin_controller.admin_points_per_food) + ")\n"
             "2: ADJUST SPEED (currently " + str(self.admin_controller.admin_speed_multiplier) + "x)\n"
             "3: ANIMATION LEVEL (currently " + str(self.admin_controller.admin_animation_level) + ")\n"
@@ -193,7 +210,7 @@ class SnakeGame:
     def show_mode_menu(self):
         self.admin_controller.admin_mode = False
         self.show_message(
-            "SNAKE GAME\n"
+            "SNAKE GAME\n\n"
             "1: CLASSIC MODE\n"
             "2: TIME ATTACK MODE\n"
             "3: SURVIVAL MODE\n"
@@ -250,14 +267,17 @@ class SnakeGame:
 
         if self.game_mode == "time_attack":
             self.show_message(
-                f"SNAKE GAME - {mode_text} ({diff_text})\n"
+                f"SNAKE GAME - {mode_text} ({diff_text})\n\n"
                 f"Time Limit: {self.time_limit} seconds\n"
+                f"Combo Multiplier: x1\n"
                 "Press ENTER to start",
                 "#00FFFF"
             )
         else:
             self.show_message(
-                f"SNAKE GAME - {mode_text} ({diff_text})\n"
+                f"SNAKE GAME - {mode_text} ({diff_text})\n\n"
+                "Collect food and grow!\n"
+                "Get combos for bonus points!\n"
                 "Press ENTER to start",
                 "#00FFFF"
             )
@@ -285,6 +305,9 @@ class SnakeGame:
         self.direction = "stop"
         self.next_direction = "stop"
         self.bonus_active = False
+        self.poison_active = False
+        self.combo = 0
+        self.foods_eaten = 0
 
         if self.game_mode == "time_attack":
             self.time_remaining = self.time_limit
@@ -297,6 +320,7 @@ class SnakeGame:
 
         self.food.show()
         self.bonus_food.hide()
+        self.poison_food.hide()
 
         self.place_food(self.food)
         self.clear_message()
@@ -341,6 +365,12 @@ class SnakeGame:
         self.place_food(self.bonus_food)
         self.bonus_food.show()
 
+    def activate_poison_food(self):
+        self.poison_active = True
+        self.poison_deadline = time.time() + settings.BONUS_FOOD_TIME / 1500
+        self.place_food(self.poison_food)
+        self.poison_food.show()
+
     def update_bonus_food(self):
         if not self.bonus_active:
             return
@@ -348,6 +378,14 @@ class SnakeGame:
         if time.time() >= self.bonus_deadline:
             self.bonus_active = False
             self.bonus_food.hide()
+
+    def update_poison_food(self):
+        if not self.poison_active:
+            return
+
+        if time.time() >= self.poison_deadline:
+            self.poison_active = False
+            self.poison_food.hide()
 
     # ---------------------------------------------------------
     # Movement
@@ -440,8 +478,12 @@ class SnakeGame:
 
         if head.distance(self.food.turtle) < settings.GRID_SIZE:
             self.animation_manager.animate_food_pickup(self.food)
+            self.animation_manager.pulse_effect(head)
             self.grow_snake()
-            points = self.admin_controller.admin_points_per_food if self.admin_controller.admin_mode else settings.NORMAL_FOOD_POINTS
+            self.combo += 1
+            self.foods_eaten += 1
+            combo_multiplier = 1 + (self.combo * 0.1)
+            points = int(self.admin_controller.admin_points_per_food * combo_multiplier if self.admin_controller.admin_mode else settings.NORMAL_FOOD_POINTS * combo_multiplier)
             self.increase_score(points)
             self.animation_manager.draw_score_popup(self.food.xcor(), self.food.ycor(), points)
             self.place_food(self.food)
@@ -449,16 +491,29 @@ class SnakeGame:
             if random.random() < settings.BONUS_DROP_CHANCE and not self.bonus_active:
                 self.activate_bonus_food()
 
+            if random.random() < settings.POISON_DROP_CHANCE and not self.poison_active and self.foods_eaten > 5:
+                self.activate_poison_food()
+
         if self.bonus_active and head.distance(self.bonus_food.turtle) < settings.GRID_SIZE:
             self.animation_manager.animate_food_pickup(self.bonus_food)
+            self.animation_manager.pulse_effect(head)
             self.grow_snake()
             self.grow_snake()
+            self.combo += 2
             bonus_points = int(settings.BONUS_FOOD_POINTS * (self.admin_controller.admin_points_per_food / settings.NORMAL_FOOD_POINTS)) if self.admin_controller.admin_mode else settings.BONUS_FOOD_POINTS
             self.increase_score(bonus_points)
             self.animation_manager.draw_score_popup(self.bonus_food.xcor(), self.bonus_food.ycor(), bonus_points)
 
             self.bonus_active = False
             self.bonus_food.hide()
+
+        if self.poison_active and head.distance(self.poison_food.turtle) < settings.GRID_SIZE:
+            self.combo = 0
+            poison_damage = settings.POISON_FOOD_POINTS
+            self.increase_score(poison_damage)
+            self.animation_manager.draw_score_popup(self.poison_food.xcor(), self.poison_food.ycor(), poison_damage)
+            self.poison_active = False
+            self.poison_food.hide()
 
     # ---------------------------------------------------------
     # Game state
@@ -471,7 +526,8 @@ class SnakeGame:
 
         self.show_message(
             f"{reason}\n"
-            f"Final Score: {self.score}\n"
+            f"Final Score: {self.score}    Level: {self.level}\n"
+            f"Food Eaten: {self.foods_eaten}\n"
             "Press R to return to menu",
             "#FF3131"
         )
@@ -524,6 +580,7 @@ class SnakeGame:
                         self.check_food_collision()
 
             self.update_bonus_food()
+            self.update_poison_food()
 
         self.screen.update()
         self.update_scoreboard()

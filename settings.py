@@ -14,12 +14,15 @@ BORDER_COLOR = "#E6F1FF"
 TEXT_COLOR = "#FFFFFF"
 SNAKE_HEAD_COLOR = "#00FF99"
 SNAKE_BODY_COLOR = "#73FBD3"
+SNAKE_BODY_DARK = "#4DD0E1"
 FOOD_COLOR = "#FF4D6D"
 BONUS_FOOD_COLOR = "#FFD166"
+POISON_FOOD_COLOR = "#FF1744"
 
 NORMAL_FOOD_POINTS = 10
 BONUS_FOOD_POINTS = 25
 BONUS_FOOD_TIME = 6000
+POISON_FOOD_POINTS = -15
 
 UP_KEYS = ("Up", "w", "W")
 DOWN_KEYS = ("Down", "s", "S")
@@ -49,10 +52,39 @@ ANIMATION_GROW_SCALE = 0.14
 ANIMATION_POPUP_OFFSET = 5
 LEVEL_UP_MESSAGE_DURATION = 1000
 BONUS_DROP_CHANCE = 0.25
+POISON_DROP_CHANCE = 0.15
 
 ADMIN_MENU_OPTIONS = {
     "1": "ADJUST POINTS",
     "2": "ADJUST SPEED",
     "3": "ANIMATION LEVEL",
     "4": "BACK TO MENU",
+}
+
+TETRIS_GRID_WIDTH = 10
+TETRIS_GRID_HEIGHT = 20
+TETRIS_BLOCK_SIZE = 20
+TETRIS_BACKGROUND = "#1A1A2E"
+TETRIS_GRID_COLOR = "#16213E"
+TETRIS_SPAWN_X = TETRIS_GRID_WIDTH // 2
+TETRIS_SPAWN_Y = 0
+
+TETRIS_COLORS = {
+    "I": "#00F0F0",
+    "O": "#F0F000",
+    "T": "#A000F0",
+    "S": "#00F000",
+    "Z": "#F00000",
+    "J": "#0000F0",
+    "L": "#F0A000",
+}
+
+TETRIS_SHAPES = {
+    "I": [(0, 0), (1, 0), (2, 0), (3, 0)],
+    "O": [(0, 0), (1, 0), (0, 1), (1, 1)],
+    "T": [(1, 0), (0, 1), (1, 1), (2, 1)],
+    "S": [(1, 0), (2, 0), (0, 1), (1, 1)],
+    "Z": [(0, 0), (1, 0), (1, 1), (2, 1)],
+    "J": [(0, 0), (0, 1), (1, 1), (2, 1)],
+    "L": [(2, 0), (0, 1), (1, 1), (2, 1)],
 }

@@ -43,3 +43,47 @@ class Snake:
         if not self.segments:
             raise ValueError("Snake has no tail segment.")
         return self.segments[-1]
+
+
+class Food:
+    def __init__(self, color="#FF4D6D"):
+        self.turtle = turtle.Turtle()
+        self.turtle.speed(0)
+        self.turtle.shape("circle")
+        self.turtle.color(color)
+        self.turtle.penup()
+        self.turtle.shapesize(0.8, 0.8)
+        self.turtle.hideturtle()
+        self.food_type = "normal"
+
+    def show(self):
+        self.turtle.showturtle()
+
+    def hide(self):
+        self.turtle.hideturtle()
+
+    def goto(self, x, y):
+        self.turtle.goto(x, y)
+
+    def xcor(self):
+        return self.turtle.xcor()
+
+    def ycor(self):
+        return self.turtle.ycor()
+
+    def distance(self, other):
+        return self.turtle.distance(other)
+
+
+class BonusFood(Food):
+    def __init__(self):
+        super().__init__("#FFD166")
+        self.turtle.shape("triangle")
+        self.food_type = "bonus"
+
+
+class PoisonFood(Food):
+    def __init__(self):
+        super().__init__("#FF1744")
+        self.turtle.shape("square")
+        self.food_type = "poison"

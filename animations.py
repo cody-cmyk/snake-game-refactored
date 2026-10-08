@@ -46,13 +46,14 @@ class AnimationManager:
         if self.screen is None:
             return
 
+        color = "#00FF00" if points > 0 else "#FF0000"
         popup = turtle.Turtle()
         popup.speed(0)
         popup.hideturtle()
         popup.penup()
-        popup.color("#FFD700")
+        popup.color(color)
         popup.goto(x, y)
-        popup.write(f"+{points}", align="center", font=("Arial", 14, "bold"))
+        popup.write(f"{points:+d}", align="center", font=("Arial", 14, "bold"))
 
         for i in range(settings.ANIMATION_POPUP_STEPS):
             popup.goto(x, y + (i * settings.ANIMATION_POPUP_OFFSET))
@@ -60,3 +61,16 @@ class AnimationManager:
             time.sleep(0.05)
 
         popup.hideturtle()
+
+    def pulse_effect(self, turtle_obj, duration=0.2):
+        """Create a pulsing effect for snake when eating."""
+        if self.screen is None:
+            return
+        original_size = turtle_obj.shapesize()
+        for _ in range(3):
+            turtle_obj.shapesize(original_size[0] * 1.2, original_size[1] * 1.2)
+            self.screen.update()
+            time.sleep(duration / 6)
+            turtle_obj.shapesize(original_size[0], original_size[1])
+            self.screen.update()
+            time.sleep(duration / 6)
