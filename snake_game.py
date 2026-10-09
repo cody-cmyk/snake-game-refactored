@@ -1,404 +1,243 @@
-import random
-import time
 import turtle
+import random
 
-import settings
-from admin import AdminController
-from animations import AnimationManager
-from controls import ControlBinder
-from entities import Snake, Food, BonusFood, PoisonFood
-from ui import GameUI
+
+class ArcadeTheme:
+    """Arcade visual theme"""
+    BG_DARK = "#0A0E27"
+    ACCENT_CYAN = "#00FF88"
+    ACCENT_RED = "#FF1744"
+    ACCENT_YELLOW = "#FFD700"
+    TEXT_PRIMARY = "#FFFFFF"
 
 
 class SnakeGame:
-    """Main Snake Game class with full gameplay mechanics"""
-    
+    """Full-featured Snake game with arcade theme"""
+
     def __init__(self):
-        import turtle as turtle_module
-        
-        self.screen = turtle_module.Screen()
-        self.screen.title("Snake Game - Classic Arcade")
-        self.screen.bgcolor(settings.BACKGROUND_COLOR)
-        self.screen.setup(
-            width=settings.WINDOW_WIDTH,
-            height=settings.WINDOW_HEIGHT
-        )
+        self.screen = turtle.Screen()
+        self.screen.title("🐍 SNAKE - Arcade Edition")
+        self.screen.bgcolor(ArcadeTheme.BG_DARK)
+        self.screen.setup(width=900, height=700)
         self.screen.tracer(0)
-        
-        self.ui = GameUI(self.screen)
-        self.animation_manager = AnimationManager(self.screen)
-        self.admin_controller = AdminController()
-        self.control_binder = ControlBinder(self.screen, self)
-        
-        self.snake = Snake()
-        self.food = Food()
-        self.bonus_food = BonusFood()
-        self.poison_food = PoisonFood()
-        
-        self.direction = "stop"
-        self.next_direction = "stop"
-        
+
+        self.snake = []
+        self.direction = "right"
+        self.next_direction = "right"
         self.score = 0
-        self.high_score = 0
-        self.level = 1
-        self.speed = settings.STARTING_SPEED
-        self.combo = 0
-        
-        self.running = False
-        self.paused = False
-        self.game_started = False
-        
-        self.bonus_active = False
-        self.bonus_deadline = 0
-        self.poison_active = False
-        self.poison_deadline = 0
-        
-        self.game_mode = None
-        self.difficulty = None
-        self.time_limit = 0
-        self.time_remaining = 0
-        self.start_time = 0
-        self.foods_eaten = 0
-        
-        self.create_food()
-        self.create_bonus_food()
-        self.create_poison_food()
-        self.bind_controls()
-    
-    # ---------------------------------------------------------
-    # Screen setup
-    # ---------------------------------------------------------
-    
-    def create_food(self):
-        self.food = Food()
-    
-    def create_bonus_food(self):
-        self.bonus_food = BonusFood()
-    
-    def create_poison_food(self):
-        self.poison_food = PoisonFood()
-    
-    # ---------------------------------------------------------
-    # UI methods
-    # ---------------------------------------------------------
-    
-    def show_message(self, message, color=settings.TEXT_COLOR):
-        self.ui.show_message(message, color)
-    
-    def clear_message(self):
-        self.ui.clear_message()
-    
-    def update_scoreboard(self):
-        state = {
-            "score": self.score,
-            "high_score": self.high_score,
-            "level": self.level,
-            "game_mode": self.game_mode,
-            "difficulty": self.difficulty,
-            "time_remaining": self.time_remaining,
-            "admin_mode": self.admin_controller.admin_mode,
-            "admin_points_per_food": self.admin_controller.admin_points_per_food,
-            "admin_speed_multiplier": self.admin_controller.admin_speed_multiplier,
-            "admin_animation_level": self.admin_controller.admin_animation_level,
-        }
-        self.ui.update_scoreboard(state)
-    
-    # ---------------------------------------------------------
-    # Food management
-    # ---------------------------------------------------------
-    
-    def get_random_position(self):
-        while True:
-            x = random.randrange(
-                settings.GAME_LEFT + settings.GRID_SIZE,
-                settings.GAME_RIGHT - settings.GRID_SIZE,
-                settings.GRID_SIZE
-            )
-            
-            y = random.randrange(
-                settings.GAME_BOTTOM + settings.GRID_SIZE,
-                settings.GAME_TOP - settings.GRID_SIZE,
-                settings.GRID_SIZE
-            )
-            
-            position_is_free = all(
-                segment.distance(x, y) >= settings.GRID_SIZE
-                for segment in self.snake
-            )
-            
-            if position_is_free:
-                return x, y
-    
-    def place_food(self, food_object):
-        food_object.goto(self.get_random_position())
-    
-    def activate_bonus_food(self):
-        self.bonus_active = True
-        self.bonus_deadline = time.time() + settings.BONUS_FOOD_TIME / 1000
-        self.place_food(self.bonus_food)
-        self.bonus_food.show()
-    
-    def activate_poison_food(self):
-        self.poison_active = True
-        self.poison_deadline = time.time() + settings.BONUS_FOOD_TIME / 1500
-        self.place_food(self.poison_food)
-        self.poison_food.show()
-    
-    def update_bonus_food(self):
-        if not self.bonus_active:
-            return
-        
-        if time.time() >= self.bonus_deadline:
-            self.bonus_active = False
-            self.bonus_food.hide()
-    
-    def update_poison_food(self):
-        if not self.poison_active:
-            return
-        
-        if time.time() >= self.poison_deadline:
-            self.poison_active = False
-            self.poison_food.hide()
-    
-    # ---------------------------------------------------------
-    # Movement
-    # ---------------------------------------------------------
-    
-    def set_direction(self, new_direction):
-        opposite_directions = {
-            "up": "down",
-            "down": "up",
-            "left": "right",
-            "right": "left"
-        }
-        
-        if self.direction == "stop":
-            self.next_direction = new_direction
-            return
-        
-        if opposite_directions.get(self.direction) != new_direction:
-            self.next_direction = new_direction
-    
-    def move_snake(self):
-        self.direction = self.next_direction
-        
-        for index in range(len(self.snake) - 1, 0, -1):
-            self.snake.segments[index].goto(self.snake.segments[index - 1].position())
-        
-        head = self.snake.head()
-        
-        if self.direction == "up":
-            head.sety(head.ycor() + settings.GRID_SIZE)
-        elif self.direction == "down":
-            head.sety(head.ycor() - settings.GRID_SIZE)
-        elif self.direction == "left":
-            head.setx(head.xcor() - settings.GRID_SIZE)
-        elif self.direction == "right":
-            head.setx(head.xcor() + settings.GRID_SIZE)
-    
-    # ---------------------------------------------------------
-    # Collision detection
-    # ---------------------------------------------------------
-    
-    def hit_wall(self):
-        head = self.snake.head()
-        
-        return (
-            head.xcor() > settings.GAME_RIGHT - settings.GRID_SIZE
-            or head.xcor() < settings.GAME_LEFT + settings.GRID_SIZE
-            or head.ycor() > settings.GAME_TOP - settings.GRID_SIZE
-            or head.ycor() < settings.GAME_BOTTOM + settings.GRID_SIZE
-        )
-    
-    def hit_self(self):
-        head = self.snake.head()
-        
-        for segment in self.snake.segments[1:]:
-            if head.distance(segment) < settings.GRID_SIZE:
-                return True
-        
-        return False
-    
-    # ---------------------------------------------------------
-    # Scoring and levels
-    # ---------------------------------------------------------
-    
-    def grow_snake(self):
-        new_segment = self.snake.create_segment()
-        new_segment.goto(self.snake.tail().position())
-        self.snake.add_segment(new_segment)
-        self.animation_manager.animate_snake_growth(new_segment)
-    
-    def increase_score(self, points):
-        self.score += points
-        
-        if self.score > self.high_score:
-            self.high_score = self.score
-        
-        if self.game_mode != "time_attack":
-            new_level = self.score // 100 + 1
-            
-            if new_level > self.level:
-                self.level = new_level
-                self.speed = max(20, int(self.speed * 0.9))
-                self.animation_manager.animate_level_up(self.level)
-                self.screen.ontimer(self.clear_message, settings.LEVEL_UP_MESSAGE_DURATION)
-        
-        self.update_scoreboard()
-    
-    def check_food_collision(self):
-        head = self.snake.head()
-        
-        if head.distance(self.food.turtle) < settings.GRID_SIZE:
-            self.animation_manager.animate_food_pickup(self.food)
-            self.animation_manager.pulse_effect(head)
-            self.grow_snake()
-            self.combo += 1
-            self.foods_eaten += 1
-            combo_multiplier = 1 + (self.combo * 0.1)
-            points = int(
-                self.admin_controller.admin_points_per_food * combo_multiplier 
-                if self.admin_controller.admin_mode 
-                else settings.NORMAL_FOOD_POINTS * combo_multiplier
-            )
-            self.increase_score(points)
-            self.animation_manager.draw_score_popup(self.food.xcor(), self.food.ycor(), points)
-            self.place_food(self.food)
-            
-            if random.random() < settings.BONUS_DROP_CHANCE and not self.bonus_active:
-                self.activate_bonus_food()
-            
-            if random.random() < settings.POISON_DROP_CHANCE and not self.poison_active and self.foods_eaten > 5:
-                self.activate_poison_food()
-        
-        if self.bonus_active and head.distance(self.bonus_food.turtle) < settings.GRID_SIZE:
-            self.animation_manager.animate_food_pickup(self.bonus_food)
-            self.animation_manager.pulse_effect(head)
-            self.grow_snake()
-            self.grow_snake()
-            self.combo += 2
-            bonus_points = int(
-                settings.BONUS_FOOD_POINTS * (self.admin_controller.admin_points_per_food / settings.NORMAL_FOOD_POINTS)
-            ) if self.admin_controller.admin_mode else settings.BONUS_FOOD_POINTS
-            self.increase_score(bonus_points)
-            self.animation_manager.draw_score_popup(self.bonus_food.xcor(), self.bonus_food.ycor(), bonus_points)
-            
-            self.bonus_active = False
-            self.bonus_food.hide()
-        
-        if self.poison_active and head.distance(self.poison_food.turtle) < settings.GRID_SIZE:
-            self.combo = 0
-            poison_damage = settings.POISON_FOOD_POINTS
-            self.increase_score(poison_damage)
-            self.animation_manager.draw_score_popup(self.poison_food.xcor(), self.poison_food.ycor(), poison_damage)
-            self.poison_active = False
-            self.poison_food.hide()
-    
-    # ---------------------------------------------------------
-    # Game state
-    # ---------------------------------------------------------
-    
-    def game_over(self, reason):
-        self.running = False
-        self.direction = "stop"
-        self.next_direction = "stop"
-        
-        self.show_message(
-            f"{reason}\n"
-            f"Final Score: {self.score}    Level: {self.level}\n"
-            f"Food Eaten: {self.foods_eaten}\n"
-            "Press R to return to menu",
-            "#FF3131"
-        )
-    
-    def toggle_pause(self):
-        if not self.game_started or not self.running:
-            return
-        
-        self.paused = not self.paused
-        
-        if self.paused:
-            self.show_message("PAUSED\nPress P to continue", "#FFD700")
-        else:
-            self.clear_message()
-    
-    # ---------------------------------------------------------
-    # Main game loop
-    # ---------------------------------------------------------
-    
-    def start_game(self):
-        self.game_started = True
+        self.food_pos = (0, 0)
         self.running = True
         self.paused = False
-        self.reset_game()
-        self.game_loop()
-    
-    def reset_game(self):
-        self.snake.clear()
-        
-        self.score = 0
-        self.level = 1
-        self.direction = "stop"
-        self.next_direction = "stop"
-        self.bonus_active = False
-        self.poison_active = False
-        self.combo = 0
-        self.foods_eaten = 0
-        
-        if self.game_mode == "time_attack":
-            self.time_remaining = self.time_limit
-            self.start_time = time.time()
-        
-        for index in range(settings.STARTING_LENGTH):
-            segment = self.snake.create_segment(is_head=index == 0)
-            segment.goto(-index * settings.GRID_SIZE, 0)
-            self.snake.add_segment(segment)
-        
-        self.food.show()
-        self.bonus_food.hide()
-        self.poison_food.hide()
-        
-        self.place_food(self.food)
-        self.clear_message()
-        self.update_scoreboard()
-    
-    def game_loop(self):
-        if self.game_mode == "time_attack":
-            self.time_remaining = self.time_limit - (time.time() - self.start_time)
-            
-            if self.time_remaining <= 0:
-                self.game_over("TIME'S UP!")
-                return
-        
-        if self.running and not self.paused:
-            if self.direction != "stop":
-                self.move_snake()
-                
-                if self.hit_wall():
-                    self.game_over("YOU HIT THE WALL")
-                elif self.hit_self():
-                    self.game_over("YOU HIT YOURSELF")
-                else:
-                    self.check_food_collision()
-            else:
-                if self.next_direction != "stop":
-                    self.move_snake()
-                    
-                    if self.hit_wall():
-                        self.game_over("YOU HIT THE WALL")
-                    elif self.hit_self():
-                        self.game_over("YOU HIT YOURSELF")
-                    else:
-                        self.check_food_collision()
-            
-            self.update_bonus_food()
-            self.update_poison_food()
-        
+        self.game_started = False
+
+        self.setup_ui()
+        self.show_start_screen()
+
+    def setup_ui(self):
+        """Setup UI elements"""
+        # Score display
+        self.score_turtle = turtle.Turtle()
+        self.score_turtle.hideturtle()
+        self.score_turtle.penup()
+        self.score_turtle.color(ArcadeTheme.ACCENT_CYAN)
+        self.score_turtle.goto(-380, 320)
+
+        # Message display
+        self.message_turtle = turtle.Turtle()
+        self.message_turtle.hideturtle()
+        self.message_turtle.penup()
+        self.message_turtle.color(ArcadeTheme.TEXT_PRIMARY)
+
+        # Draw border
+        border = turtle.Turtle()
+        border.hideturtle()
+        border.speed(0)
+        border.color(ArcadeTheme.ACCENT_CYAN)
+        border.pensize(3)
+        border.penup()
+        border.goto(-360, 280)
+        border.pendown()
+        border.goto(360, 280)
+        border.goto(360, -280)
+        border.goto(-360, -280)
+        border.goto(-360, 280)
+
+        # Title
+        title = turtle.Turtle()
+        title.hideturtle()
+        title.penup()
+        title.color(ArcadeTheme.ACCENT_CYAN)
+        title.goto(0, 310)
+        title.write("█ SNAKE ARCADE █", align="center", font=("Courier", 32, "bold"))
+
+    def show_start_screen(self):
+        """Show start screen"""
+        self.message_turtle.goto(0, 50)
+        self.message_turtle.write(
+            "PRESS ENTER TO START\n\nArrow Keys or WASD to move\nP to pause | M for menu",
+            align="center",
+            font=("Courier", 16, "normal")
+        )
+
+        self.screen.listen()
+        self.screen.onkeypress(self.start_game, "Return")
+        self.screen.onkeypress(self.return_to_menu, "m")
         self.screen.update()
-        self.update_scoreboard()
-        
-        if self.running:
-            self.screen.ontimer(self.game_loop, self.speed)
-    
+
+    def start_game(self):
+        """Start the game"""
+        self.game_started = True
+        self.message_turtle.clear()
+        self.init_snake()
+        self.spawn_food()
+        self.bind_controls()
+        self.game_loop()
+
+    def init_snake(self):
+        """Initialize snake"""
+        self.snake = []
+        for i in range(3):
+            segment = turtle.Turtle()
+            segment.shape("square")
+            segment.color(ArcadeTheme.ACCENT_CYAN if i == 0 else "#00AA66")
+            segment.speed(0)
+            segment.penup()
+            segment.goto(-i * 20, 0)
+            segment.shapesize(0.95, 0.95)
+            self.snake.append(segment)
+
+    def spawn_food(self):
+        """Spawn food randomly"""
+        x = random.randint(-17, 17) * 20
+        y = random.randint(-13, 13) * 20
+        self.food_pos = (x, y)
+
+        if not hasattr(self, "food_turtle"):
+            self.food_turtle = turtle.Turtle()
+            self.food_turtle.shape("circle")
+            self.food_turtle.color(ArcadeTheme.ACCENT_RED)
+            self.food_turtle.speed(0)
+            self.food_turtle.penup()
+            self.food_turtle.shapesize(0.8, 0.8)
+
+        self.food_turtle.goto(x, y)
+
     def bind_controls(self):
-        self.control_binder.bind()
+        """Bind keyboard controls"""
+        self.screen.listen()
+        self.screen.onkeypress(lambda: self.set_direction("up"), "Up")
+        self.screen.onkeypress(lambda: self.set_direction("up"), "w")
+        self.screen.onkeypress(lambda: self.set_direction("up"), "W")
+        self.screen.onkeypress(lambda: self.set_direction("down"), "Down")
+        self.screen.onkeypress(lambda: self.set_direction("down"), "s")
+        self.screen.onkeypress(lambda: self.set_direction("down"), "S")
+        self.screen.onkeypress(lambda: self.set_direction("left"), "Left")
+        self.screen.onkeypress(lambda: self.set_direction("left"), "a")
+        self.screen.onkeypress(lambda: self.set_direction("left"), "A")
+        self.screen.onkeypress(lambda: self.set_direction("right"), "Right")
+        self.screen.onkeypress(lambda: self.set_direction("right"), "d")
+        self.screen.onkeypress(lambda: self.set_direction("right"), "D")
+        self.screen.onkeypress(self.toggle_pause, "p")
+        self.screen.onkeypress(self.toggle_pause, "P")
+        self.screen.onkeypress(self.return_to_menu, "m")
+        self.screen.onkeypress(self.return_to_menu, "M")
+
+    def set_direction(self, direction):
+        """Set snake direction"""
+        opposites = {"up": "down", "down": "up", "left": "right", "right": "left"}
+        if self.direction != opposites.get(direction):
+            self.next_direction = direction
+
+    def toggle_pause(self):
+        """Toggle pause state"""
+        if not self.game_started or not self.running:
+            return
+        self.paused = not self.paused
+        if self.paused:
+            self.message_turtle.goto(0, 0)
+            self.message_turtle.write(
+                "⏸ PAUSED ⏸\nPress P to continue | M for menu",
+                align="center",
+                font=("Courier", 18, "bold")
+            )
+        else:
+            self.message_turtle.clear()
+
+    def return_to_menu(self):
+        """Return to main menu"""
+        self.running = False
+        self.screen.bye()
+
+    def update_score(self):
+        """Update score display"""
+        self.score_turtle.clear()
+        self.score_turtle.write(
+            f"SCORE: {self.score} | LENGTH: {len(self.snake)}",
+            font=("Courier", 14, "bold")
+        )
+
+    def move_snake(self):
+        """Move snake in current direction"""
+        self.direction = self.next_direction
+        head = self.snake[0]
+        x, y = head.xcor(), head.ycor()
+
+        if self.direction == "up":
+            y += 20
+        elif self.direction == "down":
+            y -= 20
+        elif self.direction == "left":
+            x -= 20
+        elif self.direction == "right":
+            x += 20
+
+        # Check wall collision
+        if x < -360 or x > 360 or y < -280 or y > 280:
+            self.game_over("HIT THE WALL")
+            return
+
+        # Check self collision
+        for segment in self.snake:
+            if segment.xcor() == x and segment.ycor() == y:
+                self.game_over("HIT YOURSELF")
+                return
+
+        # Add new head
+        new_head = turtle.Turtle()
+        new_head.shape("square")
+        new_head.color(ArcadeTheme.ACCENT_CYAN)
+        new_head.speed(0)
+        new_head.penup()
+        new_head.goto(x, y)
+        new_head.shapesize(0.95, 0.95)
+        self.snake.insert(0, new_head)
+
+        # Check food collision
+        if abs(x - self.food_pos[0]) < 15 and abs(y - self.food_pos[1]) < 15:
+            self.score += 10
+            self.spawn_food()
+        else:
+            # Remove tail
+            tail = self.snake.pop()
+            tail.hideturtle()
+
+    def game_over(self, reason):
+        """Handle game over"""
+        self.running = False
+        self.message_turtle.goto(0, 0)
+        self.message_turtle.write(
+            f"GAME OVER\n{reason}\nFinal Score: {self.score}\n\nPress M for menu",
+            align="center",
+            font=("Courier", 16, "bold")
+        )
+
+    def game_loop(self):
+        """Main game loop"""
+        if self.running and not self.paused:
+            self.move_snake()
+
+        self.update_score()
+        self.screen.update()
+
+        if self.running:
+            self.screen.ontimer(self.game_loop, 100)
